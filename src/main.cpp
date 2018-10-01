@@ -1,131 +1,116 @@
 #include "Arduino.h"
 #include <pins_arduino.h>
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
 
-// #include "../hs/Average.h"
-// #include "../hs/Measurement.h"
-
-
-#if defined(__AVR_ATmega1280__) || defined(__AVR_ATmega2560__)
-	//MEGA-CONFIG
-	const byte PIN_TEMP = A0; //Pin fuer TempInput
-	const byte PIN_RELAIS_1// #include "../hs/Average.h"
-// #include "../hs/Measurement.h" = 44;	//Pin fuer Reilais
-	// const byte PIN_PIEZO = 53;	//Pin fuer Piezo
-	const byte PIN_LED = 52;
-#endif
+// Pinbelegung
+const byte PIN_SCHALTER = A1;
+const byte PIN_TEMP = A3; //Pin fuer TempInput
+const byte PIN_RELAIS_1 = A2;	//Pin fuer Reilais
+const byte PIN_LED = LED_BUILTIN;		//Pin fuer StatusLED
 
 
-#if defined(__AVR_ATmega328P__) || defined(__AVR_ATmega168__)
-	//NANO-CONFIG
-	const byte PIN_TEMP = A0; //Pin fuer TempInput
-	const byte PIN_RELAIS_1 = 2;	//Pin fuer Reilais
-	// const byte PIN_RELAIS_2 = 3;
-	// const byte PIN_PIEZO = 4;	//Pin fuer Piezo
-	const byte PIN_LED = LED_BUILTIN;		//Pin fuer StatusLED
-#endif
+// Display
+LiquidCrystal_I2C lcd(0x27,16,2);
+bool s_disp_an = false;				// Schalterstatus
+bool lcd_backlight_on = true;	// Hintergrundbeleuchtung Status
 
+// Zeit
+unsigned long int now = 0, then = 0;	// Zeitvariablen
+const uint16_t T_INTERVALL = 1000;			// Zeitintervall
 
-
-
-
-const uint8_t T_THR_ON = 30;      // Threshold fuer Rampup
-const uint8_t T_SOLL = 60;     // Fuehrungsgroesse fuer Regelbetrieb
+// Temperatur-Grenzwerte
+const uint8_t T_THR_ON = 30;   	   // Threshold fuer Rampup
+const uint8_t T_SOLL = 60;    		 // Fuehrungsgroesse fuer Regelbetrieb
 
 bool ramp_up = true;    // Ablaufsteuerung
 bool pump_on = false;   // Pumpenvariable
 
+// Messwerte
+const uint8_t ANZ_DS_LAUFEND = 10;	// Anzahl der Messwerte für Berechnung laufender Durchschnitt
+float temperaturen[ANZ_DS_LAUFEND]; 	// = {150, 150, 150, 150, 150, 150, 150, 150, 150, 150};
+float ds = 0, val = 0, val_roh = 0;	// laufender Durchschnitt aus Array temperaturen, Messwert, Roh-Messwert
 
-// PID-Regler
-const uint8_t ANZ_MESSWERTE = 3;
+uint16_t counter = 0;		// Laufindex für Temperatur-Array
 
 
 
 
 void setup() {
 
-	//communication
+	// Serielle Kommunikation
 	Serial.begin(115200);
 
-	//io
+	// IO-Modes
 	pinMode(PIN_RELAIS_1, OUTPUT);
-	// pinMode(PIN_RELAIS_2, OUTPUT);
-	// pinMode(PIN_PIEZO, OUTPUT);
 	pinMode(PIN_LED, OUTPUT);
+	pinMode(PIN_SCHALTER, INPUT);
 
 	//Relais im ausgeschaltetem Zustand
-	digitalWrite(PIN_RELAIS_1, HIGH);		//Relais off
-	// digitalWrite(PIN_RELAIS_2, HIGH);
+	digitalWrite(PIN_RELAIS_1, HIGH);		// active low > bei Ausfall schaltet Relais die Pumpe auf Dauerbetrieb an
 
+	// lcd
+	lcd.init();
+	lcd.backlight();
 
-	Serial.print("TempOn: ");
-	Serial.println(T_THR_ON);
-	// Serial.print("TempOff: ");
-	// Serial.println(tempThr2);
-	Serial.println("Setup done...");
+	// Setup message
+	lcd.clear();
+	lcd.println("Starting...");
+	lcd.clear();
 
 }
 
 
+
+
+
+
 void loop() {
 
-  //Messintervall 1s
-  if (millis() % 1000 == 0){
-
-    // Messwert erfassen
-    // Sensor Messbereich 0 - 150 °C, Ausgangsspannung 0 bis 1,5V
-    // 10-Bit-Aufloesung für 5V -> 0 bis 1,5V entspricht 0 bis 1024 / 5V * 1,5V = 307
-
-    // Array fuer Regeldiff
-    // uint16_t mw[ANZ_MESSWERTE] = {};  // Messwerte/Rueckfuehrungsgroessen
-    // int8_t diff[ANZ_MESSWERTE] = {};  // Regeldifferenzen
-    // uint8_t c = 2;
+	now = millis();
+	s_disp_an = digitalRead(PIN_SCHALTER);		// Schalterstatus ständig überwachen
 
 
-    // ############################## in Klasse auslagern
-    // Regeldiffeichung ermitteln
-    uint16_t val_roh;
-    float val, val_prev, err, err_sum;
+	//Messintervall 1s
+  if ((now - then) >= T_INTERVALL){
+		then = now;
 
+		// Messwert einlesen
     val_roh = analogRead(PIN_TEMP);
-    val = round(val_roh / 1024 * 5.0);    // Temperatur-Messwert
+		// if(Serial.available() > 0){
+		// 	val_roh = Serial.parseInt();
+		// }
+    val = round(val_roh / 1024 * 5.0 / 1.5 * 150);    // Temperatur-Messwert umrechnen
+		temperaturen[counter] = val;	// schreibe Temperatur in array für Berechnung lfnd Durchschnitt
 
-    // val *= 10;      // Auf keine Kommastelle gerundet
-    // if ((int)val % 10 >= 5){
-    //   val = ((int)val + 1) / 10.0;
-    // }else{
-    //   val = ((int) val) / 10.0;
-    // }
+		// counter ggf. resetten
+		if (counter >= ANZ_DS_LAUFEND - 1){
+			counter = 0;
+		}else{
+			counter++;		// increment
+		}
 
-    err = val_prev - val;   // Regeldifferenz
-    err_sum += err;         // Fehlersummeval = round(t)
-
-
-    // Implementierung PID-Regler
-
-    // Parametrierung
-    float Kp = 0.1;
-    float Ki = 0.1;
-    float Kd = 0.1;
-
-    float t = val + Kp * err +
-      Kd * (val - val_prev) +     // val - val_prev  =  err - err_prev
-      Ki * (err_sum);
+		// Durchschnitt berechnen
+		float sum = 0;
+		for (int i = 0; i < ANZ_DS_LAUFEND; i++){
+			sum += temperaturen[i];
+		}
+		ds = round(sum / ANZ_DS_LAUFEND);
 
 
-
-    // Stellgroesse
-    if (t > T_THR_ON){
+    // Logik
+    if (ds > T_THR_ON){
       if (ramp_up){
         // Bei Rampup laeuft Pumpe bereits am T_THR_ON um Wasser umzuwaelzen
         // um gleichmaessige Temperaturverteilung zu erreichen
         pump_on = true;
-        if (t >= T_SOLL){
+        if (ds >= T_SOLL){
           ramp_up = false;    //Reset
         }
 
       }else{
         // Regelbetrieb
-        if ( t < T_SOLL){
+        if ( ds < T_SOLL){
           // Pumpe fruehzeitig aus. VermT_SOLLeidet unnoetiges Pumpen und Waermeverlust durch Kamin
           pump_on = false;
         }else{
@@ -139,55 +124,48 @@ void loop() {
       ramp_up = true;
     }
 
-    // Relais ansteuern
+
+    // Ausgänge setzen/Relais ansteuern
     digitalWrite(PIN_RELAIS_1, pump_on);
 
 
-    Serial.print("T_OFF:");
-    Serial.println(T_SOLL);
-    Serial.print("T_IST:");
-    Serial.println();
-  }
+
+	}	// Intervallende
+
+
+	// Kürzere Intervallzeit für Schalter bzw. Display
+	if ((now - then) >= 500){
+		// LCD-Ausgabe
+		if (s_disp_an == true){
+			// if (!lcd_backlight_on){
+			// 	lcd.backlight();
+			// 	lcd_backlight_on = true;
+			// }
+			lcd.setCursor(0, 0);
+			lcd.print("Ton:  ");
+			lcd.print(T_THR_ON);
+			lcd.print(" P: ");
+			if (pump_on){
+				lcd.print("ON  ");
+			}else{
+				lcd.print("OFF ");
+			}
+			lcd.println(pump_on);
+			lcd.setCursor(0, 1);
+			lcd.print("Toff: ");
+			lcd.print(T_SOLL);
+			lcd.print(" T: ");
+			lcd.print((int) ds);
+			// lcd.println("  ");
+			// if(lcd_backlight_on){
+			// 	lcd.noBacklight();
+			// 	lcd_backlight_on = false;
+			// 	lcd.clear();
+			// }
+
+
+		}
+	}
+
+
 }
-
-
-  //
-	// //Messung ausfuehren**
-	// msm.run();
-  //
-	// if(millis()%2000 == 0){
-	// 	avg = msm.getNewAvg();
-	// 	diff = msm.getDiffAvg();
-  //
-  //
-  //
-	// 	//safe on
-	// 	if (avg > tempThr2){
-	// 		r1_off = false;		//on
-	// 		runningHigh = false;
-  //
-	// 	//within temperature band
-	// 	}else if(avg > tempThr1 && avg < tempThr2){
-  //
-	// 		//low to high
-	// 		if(runningHigh){
-	// 			r1_off = false;		//on
-  //
-	// 		//high to low
-	// 		}else if(!runningHigh){
-	// 			r1_off = true;		//off
-	// 		}
-  //
-	// 	}else if(avg < tempThr1){
-	// 		r1_off = true;		//off
-	// 		runningHigh = true;
-	// 	}
-  //
-	// 	digitalWrite(PIN_RELAIS_1, r1_off);
-  //
-	// 	//Serielle �bertragung
-	// 	Serial.print("TempAvg: ");
-	// 	Serial.print(avg);
-	// 	Serial.print("    Diff: ");
-	// 	Serial.println(diff);
-	// }
