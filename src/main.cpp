@@ -44,7 +44,7 @@ void setup() {
 	// IO-Modes
 	pinMode(PIN_RELAIS_1, OUTPUT);
 	pinMode(PIN_LED, OUTPUT);
-	pinMode(PIN_SCHALTER, INPUT);
+	pinMode(PIN_SCHALTER, INPUT_PULLUP);
 
 	//Relais im ausgeschaltetem Zustand
 	digitalWrite(PIN_RELAIS_1, HIGH);		// active low > bei Ausfall schaltet Relais die Pumpe auf Dauerbetrieb an
@@ -67,12 +67,14 @@ void setup() {
 void loop() {
 
 	now = millis();
-	s_disp_an = digitalRead(PIN_SCHALTER);		// Schalterstatus ständig überwachen
+
 
 	//Messintervall 1s
   if ((now - then) >= T_INTERVALL){
 		then = now;
 
+		// Schalterposition einlesen
+		s_disp_an = digitalRead(PIN_SCHALTER);
 
 		// Messwert einlesen
     val_roh = analogRead(PIN_TEMP);
@@ -123,22 +125,18 @@ void loop() {
       ramp_up = true;
     }
 
-
-
-
-	}	// Intervallende
-
-
-	// Kürzere Intervallzeit für Schalter bzw. Display
-	if ((now - then) >= 500){
 		// Ausgänge setzen/Relais ansteuern
 		digitalWrite(PIN_RELAIS_1, !pump_on);		// wegen Relais-Belegung negiert
 
+
 		// LCD-Ausgabe
 		if (s_disp_an){
-			lcd.backlight();
+			if(!lcd_backlight_on){
+				lcd_backlight_on = true;
+				lcd.backlight();
+			}
 			lcd.setCursor(0, 0);
-			lcd.print("Ton:  ");
+			lcd.print("Ton:  >");
 			lcd.print(T_THR_ON);
 			lcd.print(" P: ");
 			if (pump_on){
@@ -148,17 +146,19 @@ void loop() {
 			}
 			lcd.println(pump_on);
 			lcd.setCursor(0, 1);
-			lcd.print("Toff: ");
+			lcd.print("Toff: <");
 			lcd.print(T_SOLL);
 			lcd.print(" T: ");
 			lcd.print((int) ds);
-
-
-		}else if (!s_disp_an){
-			lcd.noBacklight();
-			lcd.clear();
+		}else{
+			if(lcd_backlight_on){
+				lcd.noBacklight();
+				lcd.clear();
+			}
+			lcd_backlight_on = false;
 		}
-	}
+
+		}	// Intervallende
 
 
 }
