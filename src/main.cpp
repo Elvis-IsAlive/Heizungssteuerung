@@ -12,7 +12,7 @@ const byte PIN_LED = LED_BUILTIN;		//Pin fuer StatusLED
 
 // Display
 LiquidCrystal_I2C lcd(0x27,16,2);
-bool s_disp_an = false;				// Schalterstatus
+bool s_disp_an = true;				// Schalterstatus
 bool lcd_backlight_on = true;	// Hintergrundbeleuchtung Status
 
 // Zeit
@@ -39,7 +39,7 @@ uint16_t counter = 0;		// Laufindex für Temperatur-Array
 void setup() {
 
 	// Serielle Kommunikation
-	Serial.begin(115200);
+	// Serial.begin(115200);
 
 	// IO-Modes
 	pinMode(PIN_RELAIS_1, OUTPUT);
@@ -55,8 +55,7 @@ void setup() {
 
 	// Setup message
 	lcd.clear();
-	lcd.println("Starting...");
-	lcd.clear();
+
 
 }
 
@@ -70,10 +69,10 @@ void loop() {
 	now = millis();
 	s_disp_an = digitalRead(PIN_SCHALTER);		// Schalterstatus ständig überwachen
 
-
 	//Messintervall 1s
   if ((now - then) >= T_INTERVALL){
 		then = now;
+
 
 		// Messwert einlesen
     val_roh = analogRead(PIN_TEMP);
@@ -125,9 +124,6 @@ void loop() {
     }
 
 
-    // Ausgänge setzen/Relais ansteuern
-    digitalWrite(PIN_RELAIS_1, pump_on);
-
 
 
 	}	// Intervallende
@@ -135,12 +131,12 @@ void loop() {
 
 	// Kürzere Intervallzeit für Schalter bzw. Display
 	if ((now - then) >= 500){
+		// Ausgänge setzen/Relais ansteuern
+		digitalWrite(PIN_RELAIS_1, !pump_on);		// wegen Relais-Belegung negiert
+
 		// LCD-Ausgabe
-		if (s_disp_an == true){
-			// if (!lcd_backlight_on){
-			// 	lcd.backlight();
-			// 	lcd_backlight_on = true;
-			// }
+		if (s_disp_an){
+			lcd.backlight();
 			lcd.setCursor(0, 0);
 			lcd.print("Ton:  ");
 			lcd.print(T_THR_ON);
@@ -156,14 +152,11 @@ void loop() {
 			lcd.print(T_SOLL);
 			lcd.print(" T: ");
 			lcd.print((int) ds);
-			// lcd.println("  ");
-			// if(lcd_backlight_on){
-			// 	lcd.noBacklight();
-			// 	lcd_backlight_on = false;
-			// 	lcd.clear();
-			// }
 
 
+		}else if (!s_disp_an){
+			lcd.noBacklight();
+			lcd.clear();
 		}
 	}
 
