@@ -4,161 +4,140 @@
 #include <LiquidCrystal_I2C.h>
 
 // Pinbelegung
-const byte PIN_SCHALTER = A1;
-const byte PIN_TEMP = A3; //Pin fuer TempInput
-const byte PIN_RELAIS_1 = A2;	//Pin fuer Reilais
-const byte PIN_LED = LED_BUILTIN;		//Pin fuer StatusLED
-
+const byte PIN_DISPLAY_SWITCH = A1;
+const byte PIN_TEMP_SENSOR = A3;  // Pin fuer TempInput
+const byte PIN_RELAIS_PUMP = A2;  // Pin fuer Reilais
+const byte PIN_LED = LED_BUILTIN; // Pin fuer StatusLED
 
 // Display
-LiquidCrystal_I2C lcd(0x27,16,2);
-bool s_disp_an = true;				// Schalterstatus
-bool lcd_backlight_on = true;	// Hintergrundbeleuchtung Status
+LiquidCrystal_I2C lcd(0x27, 16, 2);
 
 // Zeit
-unsigned long int now = 0, then = 0;	// Zeitvariablen
-const uint16_t T_INTERVALL = 1000;			// Zeitintervall
+unsigned long int now = 0, then = 0;   // Zeitvariablen
+const uint16_t CYCLE_PERIOD_MS = 1000; // Zeitintervall
 
 // Temperatur-Grenzwerte
-const uint8_t T_THR_ON = 30;   	   // Threshold fuer Rampup
-const uint8_t T_SOLL = 60;    		 // Fuehrungsgroesse fuer Regelbetrieb
+const uint8_t TMP_LIMIT_LOWER = 30; // Threshold fuer Rampup
+const uint8_t TMP_LIMIT_UPPER = 55; // Threshold fuer Rampup
+const float T_ROOM = 23;			// Raumtemperatur
 
-bool ramp_up = true;    // Ablaufsteuerung
-bool pump_on = false;   // Pumpenvariable
+bool pumpOff = false;				   // Pumpenvariable
+const uint16_t MIN_ON_TIME_S = 5 * 60; // 5 minutes
 
 // Messwerte
-const uint8_t ANZ_DS_LAUFEND = 10;	// Anzahl der Messwerte für Berechnung laufender Durchschnitt
-float temperaturen[ANZ_DS_LAUFEND]; 	// = {150, 150, 150, 150, 150, 150, 150, 150, 150, 150};
-float ds = 0, val = 0, val_roh = 0;	// laufender Durchschnitt aus Array temperaturen, Messwert, Roh-Messwert
+typedef float tmp_t;
+tmp_t tmp; // Durchschnittstemperatur
+const uint8_t DIVISOR_EXPONENTIAL_FILTER = 8;
 
-uint16_t counter = 0;		// Laufindex für Temperatur-Array
+typedef enum
+{
+	COLD,
+	WARMUP,
+	HOT,
+	COOLDOWN
+} ePhase_t;
 
+ePhase_t phase = COLD;
 
-
-
-void setup() {
+void setup()
+{
 
 	// Serielle Kommunikation
 	// Serial.begin(115200);
 
 	// IO-Modes
-	pinMode(PIN_RELAIS_1, OUTPUT);
+	pinMode(PIN_RELAIS_PUMP, OUTPUT);
 	pinMode(PIN_LED, OUTPUT);
-	pinMode(PIN_SCHALTER, INPUT_PULLUP);
-
-	//Relais im ausgeschaltetem Zustand
-	digitalWrite(PIN_RELAIS_1, HIGH);		// active low > bei Ausfall schaltet Relais die Pumpe auf Dauerbetrieb an
+	pinMode(PIN_DISPLAY_SWITCH, INPUT_PULLUP);
 
 	// lcd
 	lcd.init();
-	lcd.backlight();
-
-	// Setup message
-	lcd.clear();
-
-
 }
 
-
-
-
-
-
-void loop() {
-
+void loop()
+{
 	now = millis();
 
+	// Pump control @1s
+	if ((now - then) >= CYCLE_PERIOD_MS)
+	{
+		static tmp_t tmpPrev = TMP_LIMIT_LOWER; // on first run and if in mid temperature band, provoke pump on
 
-	//Messintervall 1s
-  if ((now - then) >= T_INTERVALL){
+		// Read and smooth temperature
+		tmp_t tmpRead = round(analogRead(PIN_TEMP_SENSOR) / 1024 * 5.0 / 1.5 * 150);
+		tmp = (tmpRead + tmp * (DIVISOR_EXPONENTIAL_FILTER - 1)) / DIVISOR_EXPONENTIAL_FILTER;
+
+		bool pumpOff = false; // Default on/active off
+		static uint16_t minOnTime;
+
+		// check hard limits
+		if (TMP_LIMIT_LOWER > tmp)
+		{
+			// pump off
+			pumpOff = true;
+			minOnTime = 0; // deactivate min on time if pump is off
+		}
+		else if (TMP_LIMIT_UPPER <= tmp)
+		{
+			// leave pump on
+			minOnTime = 0; // deactivate min on time to start at 0 when entering mid temperature band from high band
+		}
+		else
+		{
+			// check gradient for temperature between hard limits
+
+			if (0 < minOnTime)
+			{
+				// min on time active
+				minOnTime--;
+			}
+			else if (tmpPrev < tmp)
+			{
+				// rising temperature --> leave pump on at least for minimal on time
+				minOnTime = MIN_ON_TIME_S;
+			}
+			else
+			{
+				// unchanged or falling temperature --> turn pump off
+				pumpOff = true;
+			}
+		}
+
+		// Write output pin
+		digitalWrite(PIN_RELAIS_PUMP, pumpOff);
+
 		then = now;
+		tmpPrev = tmp;
+	} // Intervallende
 
-		// Schalterposition einlesen
-		s_disp_an = digitalRead(PIN_SCHALTER);
+	// Display
+	if (digitalRead(PIN_DISPLAY_SWITCH))
+	{
+		lcd.backlight();
 
-		// Messwert einlesen
-    val_roh = analogRead(PIN_TEMP);
-		// if(Serial.available() > 0){
-		// 	val_roh = Serial.parseInt();
-		// }
-    val = round(val_roh / 1024 * 5.0 / 1.5 * 150);    // Temperatur-Messwert umrechnen
-		temperaturen[counter] = val;	// schreibe Temperatur in array für Berechnung lfnd Durchschnitt
-
-		// counter ggf. resetten
-		if (counter >= ANZ_DS_LAUFEND - 1){
-			counter = 0;
-		}else{
-			counter++;		// increment
+		lcd.setCursor(0, 0);
+		lcd.print("Toff: <");
+		lcd.print(TMP_LIMIT_LOWER);
+		lcd.print(" P: ");
+		if (pumpOff)
+		{
+			lcd.print("OFF");
 		}
-
-		// Durchschnitt berechnen
-		float sum = 0;
-		for (int i = 0; i < ANZ_DS_LAUFEND; i++){
-			sum += temperaturen[i];
+		else
+		{
+			lcd.print("ON ");
 		}
-		ds = round(sum / ANZ_DS_LAUFEND);
+		lcd.println();
 
-
-    // Logik
-    if (ds > T_THR_ON){
-      if (ramp_up){
-        // Bei Rampup laeuft Pumpe bereits am T_THR_ON um Wasser umzuwaelzen
-        // um gleichmaessige Temperaturverteilung zu erreichen
-        pump_on = true;
-        if (ds >= T_SOLL){
-          ramp_up = false;    //Reset
-        }
-
-      }else{
-        // Regelbetrieb
-        if ( ds < T_SOLL){
-          // Pumpe fruehzeitig aus. VermT_SOLLeidet unnoetiges Pumpen und Waermeverlust durch Kamin
-          pump_on = false;
-        }else{
-          pump_on = true;
-        }
-      }
-
-    // unterhalb T_THR_ON
-    }else{
-      pump_on = false;
-      ramp_up = true;
-    }
-
-		// Ausgänge setzen/Relais ansteuern
-		digitalWrite(PIN_RELAIS_1, !pump_on);		// wegen Relais-Belegung negiert
-
-
-		// LCD-Ausgabe
-		if (s_disp_an){
-			if(!lcd_backlight_on){
-				lcd_backlight_on = true;
-				lcd.backlight();
-			}
-			lcd.setCursor(0, 0);
-			lcd.print("Ton:  >");
-			lcd.print(T_THR_ON);
-			lcd.print(" P: ");
-			if (pump_on){
-				lcd.print("ON  ");
-			}else{
-				lcd.print("OFF ");
-			}
-			lcd.println(pump_on);
-			lcd.setCursor(0, 1);
-			lcd.print("Toff: <");
-			lcd.print(T_SOLL);
-			lcd.print(" T: ");
-			lcd.print((int) ds);
-		}else{
-			if(lcd_backlight_on){
-				lcd.noBacklight();
-				lcd.clear();
-			}
-			lcd_backlight_on = false;
-		}
-
-		}	// Intervallende
-
-
+		lcd.setCursor(0, 1);
+		lcd.print("TReg: <");
+		lcd.print(TMP_LIMIT_UPPER);
+		lcd.print(" T: ");
+		lcd.print(round(tmp));
+	}
+	else
+	{
+		lcd.noBacklight();
+		lcd.clear();
+	}
 }
