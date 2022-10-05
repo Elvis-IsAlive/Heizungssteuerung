@@ -4,3 +4,6 @@
 .gcc-flags.json
 *.o
 *.a
+*.elf
+*.hex
+build/
