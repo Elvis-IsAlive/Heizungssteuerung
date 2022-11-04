@@ -17,7 +17,7 @@ unsigned long int now = 0, then = 0;   // Zeitvariablen
 const uint16_t CYCLE_PERIOD_MS = 1000; // Zeitintervall
 
 // Temperatur-Grenzwerte
-const uint8_t TMP_LIMIT_LOWER = 30; // Threshold fuer Rampup
+const uint8_t TMP_LIMIT_LOWER = 28; // Threshold fuer Rampup
 const uint8_t TMP_LIMIT_UPPER = 55; // Threshold fuer Rampup
 const float T_ROOM = 23;			// Raumtemperatur
 
@@ -52,6 +52,8 @@ void setup()
 
 	// lcd
 	lcd.init();
+
+	// Serial.begin(9600);
 }
 
 void loop()
@@ -64,10 +66,15 @@ void loop()
 		static tmp_t tmpPrev = TMP_LIMIT_LOWER; // on first run and if in mid temperature band, provoke pump on
 
 		// Read and smooth temperature
-		tmp_t tmpRead = round(analogRead(PIN_TEMP_SENSOR) / 1024 * 5.0 / 1.5 * 150);
+		tmp_t tmpRead = analogRead(PIN_TEMP_SENSOR);
+		tmpRead = round(tmpRead / 1024 * 5.0 / 1.5 * 150);
+
 		tmp = (tmpRead + tmp * (DIVISOR_EXPONENTIAL_FILTER - 1)) / DIVISOR_EXPONENTIAL_FILTER;
 
-		bool pumpOff = false; // Default on/active off
+		// Serial.print("avg: ");
+		// Serial.print(tmp);
+
+		pumpOff = false; // Default on/active off
 		static uint16_t minOnTime;
 
 		// check hard limits
@@ -102,6 +109,9 @@ void loop()
 				pumpOff = true;
 			}
 		}
+
+		// Serial.print("   minOnTime: ");
+		// Serial.println(minOnTime);
 
 		// Write output pin
 		digitalWrite(PIN_RELAIS_PUMP, pumpOff);
