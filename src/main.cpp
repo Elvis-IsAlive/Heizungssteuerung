@@ -18,7 +18,7 @@ const uint16_t CYCLE_PERIOD_MS = 1000; // Zeitintervall
 
 // Temperatur-Grenzwerte
 const uint8_t TMP_LIMIT_LOWER = 28; // Threshold fuer Rampup
-const uint8_t TMP_LIMIT_UPPER = 55; // Threshold fuer Rampup
+const uint8_t TMP_LIMIT_UPPER = 60; // Threshold fuer Rampup
 const float T_ROOM = 23;			// Raumtemperatur
 
 bool pumpOff = false;				   // Pumpenvariable
