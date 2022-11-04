@@ -27,7 +27,7 @@ const uint16_t MIN_ON_TIME_S = 5 * 60; // 5 minutes
 // Messwerte
 typedef float tmp_t;
 tmp_t tmp; // Durchschnittstemperatur
-const uint8_t DIVISOR_EXPONENTIAL_FILTER = 8;
+const uint8_t DIVISOR_EXPONENTIAL_FILTER = 16;
 
 typedef enum
 {
