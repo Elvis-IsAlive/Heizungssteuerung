@@ -26,7 +26,9 @@ const uint16_t MIN_ON_TIME_S = 5 * 60; // 5 minutes
 
 // Messwerte
 typedef float tmp_t;
-tmp_t tmp; // Durchschnittstemperatur
+tmp_t tmp;							// Durchschnittstemperatur
+const tmp_t TMP_HYSTERESIS = 1;		// 1 Grad Hysterese
+
 const uint8_t DIVISOR_EXPONENTIAL_FILTER = 16;
 
 typedef enum
@@ -98,7 +100,7 @@ void loop()
 				// min on time active
 				minOnTime--;
 			}
-			else if (tmpPrev < tmp)
+			else if ((tmp - tmpPrev) > TMP_HYSTERESIS)
 			{
 				// rising temperature --> leave pump on at least for minimal on time
 				minOnTime = MIN_ON_TIME_S;
