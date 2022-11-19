@@ -26,6 +26,8 @@ typedef float tmp_t;
 
 const uint8_t DIVISOR_EXPONENTIAL_FILTER = 16;
 
+#define LCD_CURSORPOS_VALUE 13
+
 
 void setup()
 {
@@ -40,6 +42,17 @@ void setup()
 
 	// lcd
 	lcd.init();
+
+	lcd.setCursor(0, 0);
+	lcd.print("Toff: <");
+	lcd.print(TMP_LIMIT_LOWER);
+	lcd.print(" P: ");
+	lcd.println();
+
+	lcd.setCursor(0, 1);
+	lcd.print("TReg: <");
+	lcd.print(TMP_LIMIT_UPPER);
+	lcd.print(" T: ");
 
 	// Serial.begin(9600);
 }
@@ -56,7 +69,7 @@ void loop()
 	static tmp_t tmpPrev; 		// Vorherige Temperatur
 
 	// Pump
-	bool pumpOff = false;					// Default on/active off
+	static bool pumpOff = false;	
 
 	// Pump control @1s
 	if ((timeNow - timePrev) >= CYCLE_PERIOD_MS)
@@ -65,7 +78,6 @@ void loop()
 		tmp_t tmpRead = analogRead(PIN_TEMP_SENSOR);
 		tmpRead = round(tmpRead / 1024 * 5.0 / 1.5 * 150);
 
-
 		tmp = (tmpRead + tmp * (DIVISOR_EXPONENTIAL_FILTER - 1)) / DIVISOR_EXPONENTIAL_FILTER;
 		tmpDiff = ((tmp - tmpPrev) + tmpDiff * (DIVISOR_EXPONENTIAL_FILTER - 1)) / DIVISOR_EXPONENTIAL_FILTER;
 
@@ -73,6 +85,7 @@ void loop()
 		// Serial.print(tmp);
 
 		static uint16_t minOnTime;		// Forced pump on time on activation
+		pumpOff = false;				// Default on/active off
 
 		// check hard limits
 		if (TMP_LIMIT_LOWER > tmp)
@@ -123,31 +136,16 @@ void loop()
 	// Display
 	if (digitalRead(PIN_DISPLAY_SWITCH))
 	{
-		lcd.backlight();
-
-		lcd.setCursor(0, 0);
-		lcd.print("Toff: <");
-		lcd.print(TMP_LIMIT_LOWER);
-		lcd.print(" P: ");
-		if (pumpOff)
-		{
-			lcd.print("OFF");
-		}
-		else
-		{
-			lcd.print("ON ");
-		}
-		lcd.println();
-
-		lcd.setCursor(0, 1);
-		lcd.print("TReg: <");
-		lcd.print(TMP_LIMIT_UPPER);
-		lcd.print(" T: ");
+		lcd.setCursor(LCD_CURSORPOS_VALUE, 0);
+		lcd.print(pumpOff == true ? "OFF" : "ON ");
+		
+		lcd.setCursor(LCD_CURSORPOS_VALUE, 1);
 		lcd.print(round(tmp));
+				
+		lcd.backlight();
 	}
 	else
 	{
 		lcd.noBacklight();
-		lcd.clear();
 	}
 }
