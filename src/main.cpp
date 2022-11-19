@@ -105,13 +105,14 @@ void loop()
 			 * Due to minOnTime, if a rising temperature has been detected and pump was activated,
 			 * the next evaluation of tmpDiff is after minOnTime.
 			 */
+			const tmp_t TEMP_HYSTERESIS = 1/60*CYCLE_PERIOD_MS/1000;	// 1 degree/min
 
 			if (0 < minOnTime)
 			{
 				// min on time active
 				minOnTime--;
 			}
-			else if (tmpDiff > 0)
+			else if (tmpDiff > TEMP_HYSTERESIS)
 			{
 				// minimal on time passed and rising temperature --> leave pump on at least for minimal on time
 				minOnTime = MIN_ON_TIME_S;
