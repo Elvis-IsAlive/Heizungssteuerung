@@ -13,33 +13,19 @@ const byte PIN_LED = LED_BUILTIN; // Pin fuer StatusLED
 LiquidCrystal_I2C lcd(0x27, 16, 2);
 
 // Zeit
-unsigned long int now = 0, then = 0;   // Zeitvariablen
 const uint16_t CYCLE_PERIOD_MS = 1000; // Zeitintervall
 
 // Temperatur-Grenzwerte
 const uint8_t TMP_LIMIT_LOWER = 28; // Threshold fuer Rampup
 const uint8_t TMP_LIMIT_UPPER = 60; // Threshold fuer Rampup
-const float T_ROOM = 23;			// Raumtemperatur
 
-bool pumpOff = false;				   // Pumpenvariable
 const uint16_t MIN_ON_TIME_S = 5 * 60; // 5 minutes
 
 // Messwerte
 typedef float tmp_t;
-tmp_t tmp;							// Durchschnittstemperatur
-const tmp_t TMP_HYSTERESIS = 1;		// 1 Grad Hysterese
 
 const uint8_t DIVISOR_EXPONENTIAL_FILTER = 16;
 
-typedef enum
-{
-	COLD,
-	WARMUP,
-	HOT,
-	COOLDOWN
-} ePhase_t;
-
-ePhase_t phase = COLD;
 
 void setup()
 {
@@ -60,24 +46,33 @@ void setup()
 
 void loop()
 {
-	now = millis();
+	// Timing
+	static unsigned long int timePrev;   		
+	unsigned long int timeNow = millis();  
+
+	// Temperature
+	static tmp_t tmp;			// Durchschnittstemperatur
+	static tmp_t tmpDiff;		// Durchschnittstemperaturänderung
+	static tmp_t tmpPrev; 		// Vorherige Temperatur
+
+	// Pump
+	bool pumpOff = false;					// Default on/active off
 
 	// Pump control @1s
-	if ((now - then) >= CYCLE_PERIOD_MS)
+	if ((timeNow - timePrev) >= CYCLE_PERIOD_MS)
 	{
-		static tmp_t tmpPrev = TMP_LIMIT_LOWER; // on first run and if in mid temperature band, provoke pump on
-
 		// Read and smooth temperature
 		tmp_t tmpRead = analogRead(PIN_TEMP_SENSOR);
 		tmpRead = round(tmpRead / 1024 * 5.0 / 1.5 * 150);
 
+
 		tmp = (tmpRead + tmp * (DIVISOR_EXPONENTIAL_FILTER - 1)) / DIVISOR_EXPONENTIAL_FILTER;
+		tmpDiff = ((tmp - tmpPrev) + tmpDiff * (DIVISOR_EXPONENTIAL_FILTER - 1)) / DIVISOR_EXPONENTIAL_FILTER;
 
 		// Serial.print("avg: ");
 		// Serial.print(tmp);
 
-		pumpOff = false; // Default on/active off
-		static uint16_t minOnTime;
+		static uint16_t minOnTime;		// Forced pump on time on activation
 
 		// check hard limits
 		if (TMP_LIMIT_LOWER > tmp)
@@ -93,21 +88,24 @@ void loop()
 		}
 		else
 		{
-			// check gradient for temperature between hard limits
+			/* check gradient for temperature between hard limits
+			 * Due to minOnTime, if a rising temperature has been detected and pump was activated,
+			 * the next evaluation of tmpDiff is after minOnTime.
+			 */
 
 			if (0 < minOnTime)
 			{
 				// min on time active
 				minOnTime--;
 			}
-			else if ((tmp - tmpPrev) > TMP_HYSTERESIS)
+			else if (tmpDiff > 0)
 			{
-				// rising temperature --> leave pump on at least for minimal on time
+				// minimal on time passed and rising temperature --> leave pump on at least for minimal on time
 				minOnTime = MIN_ON_TIME_S;
 			}
 			else
 			{
-				// unchanged or falling temperature --> turn pump off
+				// minimal on time passed and temperature unchanged or falling --> turn pump off
 				pumpOff = true;
 			}
 		}
@@ -118,7 +116,7 @@ void loop()
 		// Write output pin
 		digitalWrite(PIN_RELAIS_PUMP, pumpOff);
 
-		then = now;
+		timePrev = timeNow;
 		tmpPrev = tmp;
 	} // Intervallende
 
