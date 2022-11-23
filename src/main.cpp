@@ -76,7 +76,7 @@ void loop()
 	{
 		// Read and smooth temperature
 		tmp_t tmpRead = analogRead(PIN_TEMP_SENSOR);
-		tmpRead = round(tmpRead / 1024 * 5.0 / 1.5 * 150);
+		tmpRead = tmpRead / 1024 * 5.0 / 1.5 * 150;
 
 		tmp = (tmpRead + tmp * (DIVISOR_EXPONENTIAL_FILTER - 1)) / DIVISOR_EXPONENTIAL_FILTER;
 		tmpDiff = ((tmp - tmpPrev) + tmpDiff * (DIVISOR_EXPONENTIAL_FILTER - 1)) / DIVISOR_EXPONENTIAL_FILTER;
@@ -105,14 +105,13 @@ void loop()
 			 * Due to minOnTime, if a rising temperature has been detected and pump was activated,
 			 * the next evaluation of tmpDiff is after minOnTime.
 			 */
-			const tmp_t TEMP_HYSTERESIS = 1/60*CYCLE_PERIOD_MS/1000;	// 1 degree/min
-
+			
 			if (0 < minOnTime)
 			{
 				// min on time active
 				minOnTime--;
 			}
-			else if (tmpDiff > TEMP_HYSTERESIS)
+			else if (tmpDiff > 0)
 			{
 				// minimal on time passed and rising temperature --> leave pump on at least for minimal on time
 				minOnTime = MIN_ON_TIME_S;
