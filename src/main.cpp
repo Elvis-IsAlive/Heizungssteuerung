@@ -24,7 +24,11 @@ const uint16_t MIN_ON_TIME_S = 5 * 60; // 5 minutes
 // Messwerte
 typedef float tmp_t;
 
-const uint8_t DIVISOR_EXPONENTIAL_FILTER = 16 / CYCLE_PERIOD_MS / 1000; // Running average over last n seconds
+#if CYCLE_PERIOD_MS % 1000 != 0
+#error "Invalid cycle period"
+#endif 
+
+const uint8_t DIVISOR_EXPONENTIAL_FILTER = 16 / (CYCLE_PERIOD_MS / 1000); // Running average over last n s
 
 #define LCD_CURSORPOS_VALUE 12
 #define DEBUG
