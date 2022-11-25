@@ -26,15 +26,11 @@ typedef float tmp_t;
 
 const uint8_t DIVISOR_EXPONENTIAL_FILTER = 16;
 
-#define LCD_CURSORPOS_VALUE 13
-
+#define LCD_CURSORPOS_VALUE 12
+#define DEBUG
 
 void setup()
 {
-
-	// Serielle Kommunikation
-	// Serial.begin(115200);
-
 	// IO-Modes
 	pinMode(PIN_RELAIS_PUMP, OUTPUT);
 	pinMode(PIN_LED, OUTPUT);
@@ -44,17 +40,19 @@ void setup()
 	lcd.init();
 
 	lcd.setCursor(0, 0);
-	lcd.print("Toff: <");
+	lcd.print("Toff <");
 	lcd.print(TMP_LIMIT_LOWER);
-	lcd.print(" P: ");
+	lcd.print("  P ");
 	lcd.println();
 
 	lcd.setCursor(0, 1);
-	lcd.print("TReg: <");
+	lcd.print("TReg <");
 	lcd.print(TMP_LIMIT_UPPER);
-	lcd.print(" T: ");
+	lcd.print("  T ");
 
-	// Serial.begin(9600);
+#ifdef DEBUG
+	Serial.begin(9600);
+#endif
 }
 
 void loop()
@@ -81,8 +79,12 @@ void loop()
 		tmp = (tmpRead + tmp * (DIVISOR_EXPONENTIAL_FILTER - 1)) / DIVISOR_EXPONENTIAL_FILTER;
 		tmpDiff = ((tmp - tmpPrev) + tmpDiff * (DIVISOR_EXPONENTIAL_FILTER - 1)) / DIVISOR_EXPONENTIAL_FILTER;
 
-		// Serial.print("avg: ");
-		// Serial.print(tmp);
+#ifdef DEBUG
+		Serial.print("avg: ");
+		Serial.print(tmp);
+		Serial.print("\tdiff: ");
+		Serial.print(tmpDiff, 16);
+#endif
 
 		static uint16_t minOnTime;		// Forced pump on time on activation
 		pumpOff = false;				// Default on/active off
@@ -123,8 +125,10 @@ void loop()
 			}
 		}
 
-		// Serial.print("   minOnTime: ");
-		// Serial.println(minOnTime);
+#ifdef DEBUG
+		Serial.print("\tminOnTime: ");
+		Serial.println(minOnTime);
+#endif
 
 		// Write output pin
 		digitalWrite(PIN_RELAIS_PUMP, pumpOff);
@@ -140,7 +144,7 @@ void loop()
 		lcd.print(pumpOff == true ? "OFF" : "ON ");
 		
 		lcd.setCursor(LCD_CURSORPOS_VALUE, 1);
-		lcd.print(round(tmp));
+		lcd.print(tmp, 1);
 				
 		lcd.backlight();
 	}
