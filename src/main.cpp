@@ -24,7 +24,7 @@ const uint16_t MIN_ON_TIME_S = 5 * 60; // 5 minutes
 // Messwerte
 typedef float tmp_t;
 
-const uint8_t DIVISOR_EXPONENTIAL_FILTER = 16;
+const uint8_t DIVISOR_EXPONENTIAL_FILTER = 16 / CYCLE_PERIOD_MS / 1000; // Running average over last n seconds
 
 #define LCD_CURSORPOS_VALUE 12
 #define DEBUG
@@ -76,7 +76,7 @@ void loop()
 		tmp_t tmpRead = analogRead(PIN_TEMP_SENSOR);
 		tmpRead = tmpRead / 1024 * 5.0 / 1.5 * 150;
 
-		tmp = (tmpRead + tmp * (DIVISOR_EXPONENTIAL_FILTER - 1)) / DIVISOR_EXPONENTIAL_FILTER;
+		tmp = (tmpRead + tmp * (DIVISOR_EXPONENTIAL_FILTER - 1)) / DIVISOR_EXPONENTIAL_FILTER; 
 		tmpDiff = tmp - tmpPrev;
 
 #ifdef DEBUG
