@@ -28,7 +28,7 @@ typedef float tmp_t;
 #error "Invalid cycle period"
 #endif 
 
-const uint8_t DIVISOR_EXPONENTIAL_FILTER = 16 / (CYCLE_PERIOD_MS / 1000); // Running average over last n s
+const uint8_t DIVISOR_EXPONENTIAL_FILTER = 32 / (CYCLE_PERIOD_MS / 1000); // Running average over last n s
 
 #define LCD_CURSORPOS_VALUE 12
 #define DEBUG
@@ -111,7 +111,7 @@ void loop()
 			 * Due to minOnTime, if a rising temperature has been detected and pump was activated,
 			 * the next evaluation of tmpDiff is after minOnTime.
 			 */
-			const tmp_t TEMP_TOLERANCE = 0.1;
+			const tmp_t TEMP_TOLERANCE = 0.25 * CYCLE_PERIOD_MS / 1000;	// Degree per second
 			
 			if (0 < minOnTime)
 			{
