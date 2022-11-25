@@ -31,7 +31,7 @@ typedef float tmp_t;
 const uint8_t DIVISOR_EXPONENTIAL_FILTER = 32 / (CYCLE_PERIOD_MS / 1000); // Running average over last n s
 
 #define LCD_CURSORPOS_VALUE 12
-#define DEBUG
+// #define DEBUG
 
 void setup()
 {
