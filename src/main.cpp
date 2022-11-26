@@ -68,6 +68,7 @@ void loop()
 	// Temperature
 	static tmp_t tmp;			// Durchschnittstemperatur
 	static tmp_t tmpMin;		// Mindesttemperatur
+	static tmp_t tmpMax;		// Maximaltemperatur
 
 	// Pump
 	static bool pumpOff = false;	
@@ -83,50 +84,69 @@ void loop()
 
 		static uint16_t minOnTime;		// Forced pump on time on activation
 		pumpOff = false;				// Default on/active off
+		
+		const tmp_t TMP_TOLERANCE = 1;	// Degrees
 
-		// check hard limits
-		if (TMP_LIMIT_LOWER > tmp)
+
+		if ( TMP_LIMIT_LOWER > tmp)
 		{
-			// pump off
+			// OFF
 			pumpOff = true;
-			minOnTime = 0; // deactivate min on time if pump is off
+			minOnTime = 0;
+			tmpMax = TMP_LIMIT_LOWER;	// Set maximum to lower limit to follow warm up
 			tmpMin = TMP_LIMIT_LOWER;
 		}
-		else if (TMP_LIMIT_UPPER <= tmp)
+		else 
 		{
-			// leave pump on
-			minOnTime = 0; // deactivate min on time if pump is off
-			tmpMin = TMP_LIMIT_UPPER;	// set to limit temperature to detect min during cool down
-		}
-		else
-		{
-			/* check gradient for temperature between hard limits
-			 * Due to minOnTime, if a rising temperature has been detected and pump was activated,
-			 * the next evaluation of tmpMin is after minOnTime.
-			 */
-			const tmp_t TEMP_TOLERANCE = 1;	// Degrees
-			
-			// Pump on if temperature rose more than TEMP_TOLERANCE
-			if (0 < minOnTime)
+			// Control temperature 
+
+			if ( minOnTime > 0)
 			{
-				// Pump on during minOnTime
+				// Min on time active --> ON
 				--minOnTime;
 			}
-			else if ((tmp - tmpMin) > TEMP_TOLERANCE)
+			else if ( (tmpMax - tmp) > TMP_TOLERANCE)
 			{
-				// Pump on forminOnTime
-				minOnTime = MIN_ON_TIME_S;	
+				// Cool down/after peak --> check for rising temp
+				static bool peakDetected = false;
+
+				if (!peakDetected)
+				{
+					tmpMin = tmp;	
+					minOnTime = 0;
+					peakDetected = true;
+				}
+
+				if ( (tmp - tmpMin ) > TMP_TOLERANCE)
+				{
+					// Temp rising after peak --> ON
+					tmpMax = tmp;
+					peakDetected = false;
+				}		
+				else if (tmp < TMP_LIMIT_UPPER)
+				{
+					// Temp below upper limit and falling --> OFF
+					pumpOff = true;
+				}	
+				else
+				{
+					// ON
+				}
 			}
 			else
 			{
-				// minOnTime passed and temperature unchanged or falling --> turn pump off
-				pumpOff = true;
+				// Before peak --> ON
+				minOnTime = MIN_ON_TIME_S;
 			}
 
-			// Track min temperature
-			if (tmpMin > tmp)
+			if (tmp > tmpMax)
 			{
-				tmpMin = tmp;	
+				tmpMax = tmp;
+			}
+
+			if (tmp < tmpMin)
+			{
+				tmpMin = tmp;
 			}
 		}
 
@@ -137,6 +157,8 @@ void loop()
 		Serial.print(tmp);
 		Serial.print("\tt_min: ");
 		Serial.print(tmpMin);
+		Serial.print("\tt_max: ");
+		Serial.print(tmpMax);
 		Serial.print("\tpump: ");
 		Serial.print(pumpOff ? "OFF" : "ON");
 		Serial.print("\tminOnTime: ");
