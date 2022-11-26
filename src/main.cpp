@@ -85,7 +85,7 @@ void loop()
 		static uint16_t minOnTime;		// Forced pump on time on activation
 		static bool peakDetected = false;
 		pumpOff = false;				// Default on
-		const tmp_t TMP_TOLERANCE = 1;	// Degrees
+		const tmp_t TMP_TOLERANCE = 3;	// Degrees
 
 
 		if ( TMP_LIMIT_LOWER > tmp)
@@ -115,6 +115,7 @@ void loop()
 				if ( (tmp - tmpMin ) > TMP_TOLERANCE)
 				{
 					// Temp rising after peak --> ON
+					minOnTime = MIN_ON_TIME_S;	// reactivate minOnTime
 					tmpMax = tmp;
 					peakDetected = false;
 				}		
@@ -183,7 +184,7 @@ void loop()
 		lcd.print(pumpOff == true ? "OFF" : "ON ");
 		
 		lcd.setCursor(LCD_CURSORPOS_VALUE, 1);
-		lcd.print(tmp, 0);
+		lcd.print(tmp, 1);
 				
 		lcd.backlight();
 	}
