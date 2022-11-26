@@ -83,8 +83,8 @@ void loop()
 		tmp = (tmpRead + tmp * (DIVISOR_EXPONENTIAL_FILTER - 1)) / DIVISOR_EXPONENTIAL_FILTER; 
 
 		static uint16_t minOnTime;		// Forced pump on time on activation
-		pumpOff = false;				// Default on/active off
-		
+		static bool peakDetected = false;
+		pumpOff = false;				// Default on
 		const tmp_t TMP_TOLERANCE = 1;	// Degrees
 
 
@@ -95,20 +95,15 @@ void loop()
 			minOnTime = 0;
 			tmpMax = TMP_LIMIT_LOWER;	// Set maximum to lower limit to follow warm up
 			tmpMin = TMP_LIMIT_LOWER;
+			peakDetected = false;
 		}
 		else 
 		{
 			// Control temperature 
 
-			if ( minOnTime > 0)
-			{
-				// Min on time active --> ON
-				--minOnTime;
-			}
-			else if ( (tmpMax - tmp) > TMP_TOLERANCE)
+			if ( (tmpMax - tmp) > TMP_TOLERANCE)
 			{
 				// Cool down/after peak --> check for rising temp
-				static bool peakDetected = false;
 
 				if (!peakDetected)
 				{
@@ -136,7 +131,10 @@ void loop()
 			else
 			{
 				// Before peak --> ON
-				minOnTime = MIN_ON_TIME_S;
+				if (minOnTime == 0) 
+				{ 
+					minOnTime = MIN_ON_TIME_S;	// reactivate minOnTime
+				}
 			}
 
 			if (tmp > tmpMax)
@@ -150,6 +148,16 @@ void loop()
 			}
 		}
 
+		if ( minOnTime > 0)
+		{
+			// Min on time active --> ON
+			--minOnTime;
+			pumpOff = false;
+		}
+
+		digitalWrite(PIN_RELAIS_PUMP, pumpOff);
+		timePrev = timeNow;
+
 #ifdef DEBUG
 		Serial.print("t: ");
 		Serial.print(tmpRead);
@@ -159,16 +167,13 @@ void loop()
 		Serial.print(tmpMin);
 		Serial.print("\tt_max: ");
 		Serial.print(tmpMax);
+		Serial.print("\tpeakDetected: ");
+		Serial.print(peakDetected ? "YES" : "NO");
 		Serial.print("\tpump: ");
 		Serial.print(pumpOff ? "OFF" : "ON");
 		Serial.print("\tminOnTime: ");
 		Serial.println(minOnTime);
 #endif
-
-		// Write output pin
-		digitalWrite(PIN_RELAIS_PUMP, pumpOff);
-
-		timePrev = timeNow;
 	} // Intervallende
 
 	// Display
