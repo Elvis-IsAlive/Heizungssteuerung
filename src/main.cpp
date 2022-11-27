@@ -79,18 +79,18 @@ void loop()
 
 	// Pump
 	static bool pumpOff = false;	
+	static uint16_t minOnTime;		// Forced pump on time on activation
+	static bool peakDetected = false;
+	tmp_t tmpRead;
 
 	// Pump control @1s
 	if ((timeNow - timePrev) >= CYCLE_PERIOD_MS)
 	{
 		// Read and smooth temperature
-		tmp_t tmpRead = analogRead(PIN_TEMP_SENSOR);
+		tmpRead = analogRead(PIN_TEMP_SENSOR);
 		tmpRead = (tmpRead * 5.0 * 150.0) / 1024 / 1.5;
-
 		tmp = (tmpRead + tmp * (DIVISOR_EXPONENTIAL_FILTER - 1)) / DIVISOR_EXPONENTIAL_FILTER; 
 
-		static uint16_t minOnTime;		// Forced pump on time on activation
-		static bool peakDetected = false;
 		pumpOff = false;				// Default on
 
 		if ( TMP_LIMIT_LOWER > tmp)
@@ -165,34 +165,36 @@ void loop()
 		timePrev = timeNow;
 
 #ifdef DEBUG
-		Serial.print("t: ");
-		Serial.print(tmpRead);
-		Serial.print("\tavg: ");
-		Serial.print(tmp);
-		Serial.print("\tt_min: ");
-		Serial.print(tmpMin);
-		Serial.print("\tt_max: ");
-		Serial.print(tmpMax);
-		Serial.print("\tpeakDetected: ");
-		Serial.print(peakDetected ? "YES" : "NO");
-		Serial.print("\tpump: ");
-		Serial.print(pumpOff ? "OFF" : "ON");
-		Serial.print("\tminOnTime: ");
-		Serial.println(minOnTime);
+	if (digitalRead(PIN_DISPLAY_SWITCH))
+		{
+			Serial.print("t: ");
+			Serial.print(tmpRead);
+			Serial.print("\tavg: ");
+			Serial.print(tmp);
+			Serial.print("\tt_min: ");
+			Serial.print(tmpMin);
+			Serial.print("\tt_max: ");
+			Serial.print(tmpMax);
+			Serial.print("\tpeakDetected: ");
+			Serial.print(peakDetected ? "YES" : "NO");
+			Serial.print("\tpump: ");
+			Serial.print(pumpOff ? "OFF" : "ON");
+			Serial.print("\tminOnTime: ");
+			Serial.println(minOnTime);
+	}
 #endif
 	} // Intervallende
 
 	// Display
 	if (digitalRead(PIN_DISPLAY_SWITCH))
 	{
+		lcd.setCursor(LCD_CURSORPOS_TMP, 0);
+		
 		if (floor(tmp) < 10)
 		{
-			lcd.setCursor(LCD_CURSORPOS_TMP + 1, 0);
+			lcd.print(" ");
 		}
-		else
-		{
-			lcd.setCursor(LCD_CURSORPOS_TMP, 0);
-		}
+
 		lcd.print(tmp, 1);
 				
 		lcd.setCursor(LCD_CURSORPOS_PUMP, 0);
