@@ -19,10 +19,12 @@ const uint16_t CYCLE_PERIOD_MS = 1000; // Zeitintervall
 const uint8_t TMP_LIMIT_LOWER = 30; // Threshold fuer Rampup
 const uint8_t TMP_LIMIT_UPPER = 60; // Threshold fuer Rampup
 
-const uint16_t MIN_ON_TIME_S = 2 * 60; // 2 minutes
+#define MIN_ON_TIME_MINUTES 2
+const uint16_t MIN_ON_TIME_S = MIN_ON_TIME_MINUTES * 60; // 2 minutes
 
 // Messwerte
 typedef float tmp_t;
+const tmp_t TMP_TOLERANCE = 3;	// Degrees
 
 #if CYCLE_PERIOD_MS % 1000 != 0
 #error "Invalid cycle period"
@@ -30,8 +32,9 @@ typedef float tmp_t;
 
 const uint8_t DIVISOR_EXPONENTIAL_FILTER = 16 / (CYCLE_PERIOD_MS / 1000); // Running average over last n s
 
-#define LCD_CURSORPOS_VALUE 12
-// #define DEBUG
+#define LCD_CURSORPOS_TMP 3
+#define LCD_CURSORPOS_PUMP 12
+#define DEBUG
 
 void setup()
 {
@@ -44,16 +47,20 @@ void setup()
 	lcd.init();
 
 	lcd.setCursor(0, 0);
-	lcd.print("Toff <");
-	lcd.print(TMP_LIMIT_LOWER);
-	lcd.print("  P ");
-	lcd.println();
-
+	lcd.print("T: ");	
+	lcd.setCursor(LCD_CURSORPOS_TMP, 0);
+	lcd.print(" 0.0");
+	lcd.print("  P: ");
+	lcd.setCursor(LCD_CURSORPOS_PUMP, 0);
+	lcd.print("OFF");
+	
 	lcd.setCursor(0, 1);
-	lcd.print("TReg <");
-	lcd.print(TMP_LIMIT_UPPER);
-	lcd.print("  T ");
-
+	lcd.print("Tol: +/-");
+	lcd.print(TMP_TOLERANCE, 1);
+	lcd.print(" ");
+	lcd.print(MIN_ON_TIME_MINUTES);
+	lcd.print("Min");
+	
 #ifdef DEBUG
 	Serial.begin(9600);
 #endif
@@ -85,8 +92,6 @@ void loop()
 		static uint16_t minOnTime;		// Forced pump on time on activation
 		static bool peakDetected = false;
 		pumpOff = false;				// Default on
-		const tmp_t TMP_TOLERANCE = 3;	// Degrees
-
 
 		if ( TMP_LIMIT_LOWER > tmp)
 		{
@@ -180,11 +185,18 @@ void loop()
 	// Display
 	if (digitalRead(PIN_DISPLAY_SWITCH))
 	{
-		lcd.setCursor(LCD_CURSORPOS_VALUE, 0);
-		lcd.print(pumpOff == true ? "OFF" : "ON ");
-		
-		lcd.setCursor(LCD_CURSORPOS_VALUE, 1);
+		if (floor(tmp) < 10)
+		{
+			lcd.setCursor(LCD_CURSORPOS_TMP + 1, 0);
+		}
+		else
+		{
+			lcd.setCursor(LCD_CURSORPOS_TMP, 0);
+		}
 		lcd.print(tmp, 1);
+				
+		lcd.setCursor(LCD_CURSORPOS_PUMP, 0);
+		lcd.print(pumpOff == true ? "OFF" : "ON ");
 				
 		lcd.backlight();
 	}
