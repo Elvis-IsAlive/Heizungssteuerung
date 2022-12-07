@@ -30,7 +30,7 @@ const tmp_t TMP_TOLERANCE = 3;	// Degrees
 #error "Invalid cycle period"
 #endif 
 
-const uint8_t DIVISOR_EXPONENTIAL_FILTER = 16 / (CYCLE_PERIOD_MS / 1000); // Running average over last n s
+const uint8_t DIVISOR_EXPONENTIAL_FILTER = 32 / (CYCLE_PERIOD_MS / 1000); // Running average over last n s
 
 #define LCD_CURSORPOS_TMP 3
 #define LCD_CURSORPOS_PUMP 12
