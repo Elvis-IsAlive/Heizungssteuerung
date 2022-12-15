@@ -24,7 +24,7 @@ const uint16_t MIN_ON_TIME_S = MIN_ON_TIME_MINUTES * 60; // 2 minutes
 
 // Messwerte
 typedef float tmp_t;
-const tmp_t TMP_DELTA_ON = 3;	// Degrees
+const tmp_t TMP_DELTA_ON = 5;	// Degrees
 const tmp_t TMP_DELTA_OFF = -10;	// Degrees
 
 #if CYCLE_PERIOD_MS % 1000 != 0
@@ -119,7 +119,7 @@ void loop()
 					peakDetected = true;
 				}
 
-				if ( (tmp - tmpMin ) > TMP_DELTA_ON)
+				if ( (tmp - tmpMin) > TMP_DELTA_ON)
 				{
 					// Temp rising after peak --> ON
 					minOnTime = MIN_ON_TIME_S;	// reactivate minOnTime
