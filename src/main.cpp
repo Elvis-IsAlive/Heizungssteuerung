@@ -121,7 +121,6 @@ void loop()
 				if ((tmp - tmpMin) > TMP_DELTA_ON)
 				{
 					// Temp rising after peak --> ON
-					minOnTime = MIN_ON_TIME_S; // reactivate minOnTime
 					tmpMax = tmp;
 					peakDetected = false;
 				}
@@ -129,6 +128,7 @@ void loop()
 				{
 					// Temp below upper limit and falling --> OFF
 					pumpOff = true;
+					minOnTime = 0;
 				}
 				else
 				{
@@ -138,10 +138,7 @@ void loop()
 			else
 			{
 				// Before peak --> ON
-				if (minOnTime == 0)
-				{
-					minOnTime = MIN_ON_TIME_S; // reactivate minOnTime
-				}
+
 			}
 
 			if (tmp > tmpMax)
@@ -152,6 +149,14 @@ void loop()
 			if (tmp < tmpMin)
 			{
 				tmpMin = tmp;
+			}
+		}
+
+		if (pumpOff == false)
+		{
+			if ( minOnTime == 0 )
+			{
+				minOnTime = MIN_ON_TIME_S; // reactivate minOnTime
 			}
 		}
 
