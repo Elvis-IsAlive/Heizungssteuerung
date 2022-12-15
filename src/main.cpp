@@ -24,11 +24,12 @@ const uint16_t MIN_ON_TIME_S = MIN_ON_TIME_MINUTES * 60; // 2 minutes
 
 // Messwerte
 typedef float tmp_t;
-const tmp_t TMP_TOLERANCE = 3;	// Degrees
+const tmp_t TMP_DELTA_ON = 3;	// Degrees
+const tmp_t TMP_DELTA_OFF = -10;	// Degrees
 
 #if CYCLE_PERIOD_MS % 1000 != 0
 #error "Invalid cycle period"
-#endif 
+#endif
 
 const uint8_t DIVISOR_EXPONENTIAL_FILTER = 32 / (CYCLE_PERIOD_MS / 1000); // Running average over last n s
 
@@ -55,8 +56,9 @@ void setup()
 	lcd.print("OFF");
 	
 	lcd.setCursor(0, 1);
-	lcd.print("Tol: +/-");
-	lcd.print(TMP_TOLERANCE, 1);
+	lcd.print(TMP_DELTA_ON, 1);
+	lcd.print("/");
+	lcd.print(TMP_DELTA_OFF, 1);
 	lcd.print(" ");
 	lcd.print(MIN_ON_TIME_MINUTES);
 	lcd.print("Min");
@@ -106,7 +108,7 @@ void loop()
 		{
 			// Control temperature 
 
-			if ( (tmpMax - tmp) > TMP_TOLERANCE)
+			if ( (tmp - tmpMax) <= TMP_DELTA_OFF)
 			{
 				// Cool down/after peak --> check for rising temp
 
@@ -117,7 +119,7 @@ void loop()
 					peakDetected = true;
 				}
 
-				if ( (tmp - tmpMin ) > TMP_TOLERANCE)
+				if ( (tmp - tmpMin ) > TMP_DELTA_ON)
 				{
 					// Temp rising after peak --> ON
 					minOnTime = MIN_ON_TIME_S;	// reactivate minOnTime
