@@ -17,8 +17,7 @@ const uint16_t CYCLE_PERIOD_MS = 1000; // Zeitintervall
 
 // Temperatur-Grenzwerte
 const uint8_t TMP_LIMIT_LOWER = 30; // Threshold fuer Rampup
-const uint8_t TMP_LIMIT_UPPER = 60; // Threshold fuer Rampup
-
+const uint8_t TMP_LIMIT_UPPER = 50; // still hot ambers at 53.5 degrees
 #define MIN_ON_TIME_MINUTES 2
 const uint16_t MIN_ON_TIME_S = MIN_ON_TIME_MINUTES * 60; // 2 minutes
 
