@@ -98,7 +98,6 @@ void loop()
 		{
 			// OFF
 			pumpOff = true;
-			minOnTime = 0;
 			tmpMax = TMP_LIMIT_LOWER; // Set maximum to lower limit to follow warm up
 			tmpMin = TMP_LIMIT_LOWER;
 			peakDetected = false;
@@ -128,7 +127,6 @@ void loop()
 				{
 					// Temp below upper limit and falling --> OFF
 					pumpOff = true;
-					minOnTime = 0;
 				}
 				else
 				{
@@ -138,7 +136,6 @@ void loop()
 			else
 			{
 				// Before peak --> ON
-
 			}
 
 			if (tmp > tmpMax)
@@ -152,12 +149,13 @@ void loop()
 			}
 		}
 
-		if (pumpOff == false)
+		if (pumpOff == true)
 		{
-			if ( minOnTime == 0 )
-			{
-				minOnTime = MIN_ON_TIME_S; // reactivate minOnTime
-			}
+			minOnTime = 0;
+		}
+		else if ( minOnTime == 0 )
+		{
+			minOnTime = MIN_ON_TIME_S; // reactivate minOnTime
 		}
 
 		if (minOnTime > 0)
