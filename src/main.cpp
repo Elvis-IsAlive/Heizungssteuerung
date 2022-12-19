@@ -18,8 +18,9 @@ const uint16_t CYCLE_PERIOD_MS = 1000; // Zeitintervall
 // Temperatur-Grenzwerte
 const uint8_t TMP_ON_LIMIT = 30; 	// Threshold fuer Rampup
 const uint8_t TMP_OFF_LIMIT = 55; 	// still hot ambers at 53.5 degrees
-#define MIN_ON_TIME_MINUTES 2
-const uint16_t MIN_ON_TIME_S = MIN_ON_TIME_MINUTES * 60; // 2 minutes
+#define MIN_ON_TIME_MINUTES 5
+const uint16_t MIN_ON_TIME_S = MIN_ON_TIME_MINUTES * 60; 
+const uint8_t DETECTION_CNT = 30;
 
 // Messwerte
 typedef float tmp_t;
@@ -109,7 +110,6 @@ void loop()
 			if ((tmp - tmpMax) <= TMP_DELTA_OFF)
 			{
 				// Cool down/after peak --> check for rising temp
-				const uint8_t DETECTION_CNT = 30;
 				static uint8_t numMeasBelowOffLimit = 0;
 
 				if (!peakDetected)
