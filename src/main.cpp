@@ -16,8 +16,8 @@ LiquidCrystal_I2C lcd(0x27, 16, 2);
 const uint16_t CYCLE_PERIOD_MS = 1000; // Zeitintervall
 
 // Temperatur-Grenzwerte
-const uint8_t TMP_LIMIT_LOWER = 30; // Threshold fuer Rampup
-const uint8_t TMP_LIMIT_UPPER = 55; // still hot ambers at 53.5 degrees
+const uint8_t TMP_ON_LIMIT = 30; 	// Threshold fuer Rampup
+const uint8_t TMP_OFF_LIMIT = 55; 	// still hot ambers at 53.5 degrees
 #define MIN_ON_TIME_MINUTES 2
 const uint16_t MIN_ON_TIME_S = MIN_ON_TIME_MINUTES * 60; // 2 minutes
 
@@ -94,12 +94,12 @@ void loop()
 
 		pumpOff = false; // Default on
 
-		if (TMP_LIMIT_LOWER > tmp)
+		if (TMP_ON_LIMIT > tmp)
 		{
 			// OFF
 			pumpOff = true;
-			tmpMax = TMP_LIMIT_LOWER; // Set maximum to lower limit to follow warm up
-			tmpMin = TMP_LIMIT_LOWER;
+			tmpMax = TMP_ON_LIMIT; // Set maximum to lower limit to follow warm up
+			tmpMin = TMP_ON_LIMIT;
 			peakDetected = false;
 		}
 		else
@@ -109,6 +109,8 @@ void loop()
 			if ((tmp - tmpMax) <= TMP_DELTA_OFF)
 			{
 				// Cool down/after peak --> check for rising temp
+				const uint8_t DETECTION_CNT = 30;
+				static uint8_t numMeasBelowOffLimit = 0;
 
 				if (!peakDetected)
 				{
@@ -122,15 +124,32 @@ void loop()
 					// Temp rising after peak --> ON
 					tmpMax = tmp;
 					peakDetected = false;
+					numMeasBelowOffLimit = 0;
 				}
-				else if (tmp < TMP_LIMIT_UPPER)
+				else 
 				{
-					// Temp below upper limit and falling --> OFF
-					pumpOff = true;
-				}
-				else
-				{
-					// ON
+					// Temp falling or constant after peak
+
+					if (tmp < TMP_OFF_LIMIT)
+					{
+						// Temp below off limit 
+
+						if (DETECTION_CNT > numMeasBelowOffLimit)
+						{
+							// Number of cycles below off limit not reached --> Keep pump ON
+							++numMeasBelowOffLimit;
+						}
+						else
+						{
+							// Has continuously been falling for DETECTION_TIME --> OFF
+							pumpOff = true;
+						}					
+					}
+					else
+					{
+						// ON
+						numMeasBelowOffLimit = 0; 
+					}
 				}
 			}
 			else
