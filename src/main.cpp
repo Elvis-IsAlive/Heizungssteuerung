@@ -109,10 +109,13 @@ void loop()
 			if ((tmp - tmpMax) <= TMP_DELTA_OFF)
 			{
 				// Cool down/after peak --> check for rising temp
+				static uint8_t cnt = 0;
+				const uint8_t LIMIT = 30;
 
 				if (!peakDetected)
 				{
 					tmpMin = tmp;
+					cnt = 0;
 					peakDetected = true;
 				}
 
@@ -124,8 +127,16 @@ void loop()
 				}
 				else if (tmp < TMP_LIMIT_UPPER)
 				{
-					// Temp below upper limit and falling --> OFF
-					pumpOff = true;
+					if ( LIMIT > cnt)
+					{
+						++cnt;
+						// Keep ON
+					}
+					else
+					{
+						// Temp below upper limit and falling --> OFF
+						pumpOff = true;
+					}
 				}
 				else
 				{
@@ -170,7 +181,7 @@ void loop()
 		{
 			Serial.print("t: ");
 			Serial.print(tmpRead);
-			Serial.print("\tavg: ");
+			Serial.print(" \tavg: ");
 			Serial.print(tmp);
 			Serial.print("\tt_min: ");
 			Serial.print(tmpMin);
