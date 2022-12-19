@@ -60,8 +60,9 @@ void setup()
 	lcd.print("/");
 	lcd.print(TMP_DELTA_OFF, 1);
 	lcd.print(" ");
-	lcd.print(MIN_ON_TIME_MINUTES);
-	lcd.print("Min");
+	// lcd.setCursor(LCD_CURSORPOS_MINONTIME, 1);
+	// lcd.print(MIN_ON_TIME_S);
+	// lcd.print("s");
 
 #ifdef DEBUG
 	Serial.begin(9600);
@@ -80,7 +81,7 @@ void loop()
 	static tmp_t tmpMax; // Maximaltemperatur
 
 	// Pump
-	bool pumpOff = false;
+	bool pumpOff;
 	static bool pumpOffPrev = false;
 	static uint16_t minOnTime = 0; // Forced pump on time on activation
 	static bool peakDetected = false;
@@ -93,6 +94,8 @@ void loop()
 		tmpRead = analogRead(PIN_TEMP_SENSOR);
 		tmpRead = (tmpRead * 5.0 * 150.0) / 1024 / 1.5;
 		tmp = (tmpRead + tmp * (DIVISOR_EXPONENTIAL_FILTER - 1)) / DIVISOR_EXPONENTIAL_FILTER;
+
+		pumpOff = false;
 
 		if (TMP_LIMIT_LOWER > tmp)
 		{
@@ -202,17 +205,26 @@ void loop()
 	{
 		lcd.setCursor(LCD_CURSORPOS_TMP, 0);
 
-		if (floor(tmp) < 10)
+		if ((uint8_t)tmp < 10)
 		{
 			lcd.print(" ");
 		}
 
 		lcd.print(tmp, 1);
+		lcd.print(" ");
 
 		lcd.setCursor(LCD_CURSORPOS_PUMP, 0);
-		lcd.print(pumpOff == true ? "OFF" : "ON ");
+		lcd.print(pumpOff ? "OFF" : "ON ");
 
 		lcd.setCursor(LCD_CURSORPOS_MINONTIME, 1);
+		if (minOnTime < 100)
+		{
+			lcd.print(" ");
+		}
+		if (minOnTime < 10)
+		{
+			lcd.print(" ");
+		}
 		lcd.print(minOnTime);
 		lcd.print("s");
 
