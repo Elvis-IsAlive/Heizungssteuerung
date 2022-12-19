@@ -35,7 +35,7 @@ const uint8_t DIVISOR_EXPONENTIAL_FILTER = 32 / (CYCLE_PERIOD_MS / 1000); // Run
 
 #define LCD_CURSORPOS_TMP 3
 #define LCD_CURSORPOS_PUMP 12
-#define LCD_CURSORPOS_MINONTIME 7
+#define LCD_CURSORPOS_MINONTIME 10
 #define DEBUG
 
 void setup()
@@ -103,6 +103,7 @@ void loop()
 			tmpMax = TMP_ON_LIMIT; // Set maximum to lower limit to follow warm up
 			tmpMin = TMP_ON_LIMIT;
 			peakDetected = false;
+			minOnTime = 0;
 		}
 		else
 		{
@@ -189,7 +190,7 @@ void loop()
 		{
 			Serial.print("t: ");
 			Serial.print(tmpRead);
-			Serial.print("\tavg: ");
+			Serial.print(" \tavg: ");
 			Serial.print(tmp);
 			Serial.print("\tt_min: ");
 			Serial.print(tmpMin);
