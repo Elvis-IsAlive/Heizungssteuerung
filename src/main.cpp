@@ -26,6 +26,8 @@ typedef float tmp_t;
 const tmp_t TMP_DELTA_ON = 3;	 // Degrees
 const tmp_t TMP_DELTA_OFF = -10; // Degrees
 
+const uint8_t LIMIT = 30;
+
 #if CYCLE_PERIOD_MS % 1000 != 0
 #error "Invalid cycle period"
 #endif
@@ -113,7 +115,6 @@ void loop()
 			{
 				// Cool down/after peak --> check for rising temp
 				static uint8_t cnt = 0;
-				const uint8_t LIMIT = 30;
 
 				if (!peakDetected)
 				{
