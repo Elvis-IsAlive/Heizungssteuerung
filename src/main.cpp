@@ -35,6 +35,7 @@ const uint8_t DIVISOR_EXPONENTIAL_FILTER = 32 / (CYCLE_PERIOD_MS / 1000); // Run
 
 #define LCD_CURSORPOS_TMP 3
 #define LCD_CURSORPOS_PUMP 12
+#define LCD_CURSORPOS_MINONTIME 7
 #define DEBUG
 
 void setup()
@@ -60,8 +61,8 @@ void setup()
 	lcd.print("/");
 	lcd.print(TMP_DELTA_OFF, 1);
 	lcd.print(" ");
-	lcd.print(MIN_ON_TIME_MINUTES);
-	lcd.print("Min");
+	lcd.setCursor(LCD_CURSORPOS_MINONTIME, 1);
+	lcd.print(MIN_ON_TIME_S);
 
 #ifdef DEBUG
 	Serial.begin(9600);
@@ -218,6 +219,9 @@ void loop()
 
 		lcd.setCursor(LCD_CURSORPOS_PUMP, 0);
 		lcd.print(pumpOff == true ? "OFF" : "ON ");
+
+		lcd.setCursor(LCD_CURSORPOS_MINONTIME, 1);
+		lcd.print(minOnTime);
 
 		lcd.backlight();
 	}
