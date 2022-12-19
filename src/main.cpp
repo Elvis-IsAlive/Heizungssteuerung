@@ -149,11 +149,7 @@ void loop()
 			}
 		}
 
-		if (pumpOff == true)
-		{
-			minOnTime = 0;
-		}
-		else if ( minOnTime == 0 )
+		if (false == pumpOff && 0 == minOnTime)
 		{
 			minOnTime = MIN_ON_TIME_S; // reactivate minOnTime
 		}
