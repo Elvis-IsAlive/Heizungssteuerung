@@ -18,7 +18,7 @@ const uint16_t CYCLE_PERIOD_MS = 1000; // Zeitintervall
 // Temperatur-Grenzwerte
 const uint8_t TMP_LIMIT_LOWER = 30; // Threshold fuer Rampup
 const uint8_t TMP_LIMIT_UPPER = 55; // still hot ambers at 53.5 degrees
-#define MIN_ON_TIME_MINUTES 2
+#define MIN_ON_TIME_MINUTES 5
 const uint16_t MIN_ON_TIME_S = MIN_ON_TIME_MINUTES * 60; // 2 minutes
 
 // Messwerte
@@ -34,6 +34,7 @@ const uint8_t DIVISOR_EXPONENTIAL_FILTER = 32 / (CYCLE_PERIOD_MS / 1000); // Run
 
 #define LCD_CURSORPOS_TMP 3
 #define LCD_CURSORPOS_PUMP 12
+#define LCD_CURSORPOS_MINONTIME 10
 #define DEBUG
 
 void setup()
@@ -79,8 +80,9 @@ void loop()
 	static tmp_t tmpMax; // Maximaltemperatur
 
 	// Pump
-	static bool pumpOff = false;
-	static uint16_t minOnTime; // Forced pump on time on activation
+	bool pumpOff = false;
+	static bool pumpOffPrev = false;
+	static uint16_t minOnTime = 0; // Forced pump on time on activation
 	static bool peakDetected = false;
 	tmp_t tmpRead;
 
@@ -91,8 +93,6 @@ void loop()
 		tmpRead = analogRead(PIN_TEMP_SENSOR);
 		tmpRead = (tmpRead * 5.0 * 150.0) / 1024 / 1.5;
 		tmp = (tmpRead + tmp * (DIVISOR_EXPONENTIAL_FILTER - 1)) / DIVISOR_EXPONENTIAL_FILTER;
-
-		pumpOff = false; // Default on
 
 		if (TMP_LIMIT_LOWER > tmp)
 		{
@@ -113,7 +113,6 @@ void loop()
 				if (!peakDetected)
 				{
 					tmpMin = tmp;
-					minOnTime = 0;
 					peakDetected = true;
 				}
 
@@ -149,12 +148,9 @@ void loop()
 			}
 		}
 
-		if (pumpOff == true)
+		if (pumpOffPrev == true && pumpOff == false)
 		{
-			minOnTime = 0;
-		}
-		else if ( minOnTime == 0 )
-		{
+			// Pump is turned on
 			minOnTime = MIN_ON_TIME_S; // reactivate minOnTime
 		}
 
@@ -167,6 +163,7 @@ void loop()
 
 		digitalWrite(PIN_RELAIS_PUMP, pumpOff);
 		timePrev = timeNow;
+		pumpOffPrev = pumpOff;
 
 #ifdef DEBUG
 		if (digitalRead(PIN_DISPLAY_SWITCH))
@@ -203,6 +200,10 @@ void loop()
 
 		lcd.setCursor(LCD_CURSORPOS_PUMP, 0);
 		lcd.print(pumpOff == true ? "OFF" : "ON ");
+
+		lcd.setCursor(LCD_CURSORPOS_MINONTIME, 1);
+		lcd.print(minOnTime);
+		lcd.print("s");
 
 		lcd.backlight();
 	}
